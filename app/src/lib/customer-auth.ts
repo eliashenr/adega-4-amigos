@@ -10,7 +10,7 @@ const COOKIE_NAME = 'customer-token';
 export interface CustomerPayload {
   id: number;
   name: string;
-  email: string;
+  phone: string;
 }
 
 export async function signCustomerToken(payload: CustomerPayload): Promise<string> {

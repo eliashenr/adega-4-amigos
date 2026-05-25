@@ -5,9 +5,10 @@ import { STORE } from '@/constants';
 import { cn } from '@/lib/utils';
 
 export default function LocalizacaoPage() {
-  const mapSrc = `https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3659.3!2d${STORE.coords.lng}!3d${STORE.coords.lat}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMjPCsDI5JzUxLjciUyA0N8KwMjcnMjkuMiJX!5e0!3m2!1spt-BR!2sbr!4v1700000000000`;
+  const addressQuery = encodeURIComponent(`${STORE.address}, ${STORE.city} - ${STORE.state}, ${STORE.cep}`);
+  const mapSrc = `https://maps.google.com/maps?q=${addressQuery}&t=&z=16&ie=UTF8&iwloc=&output=embed`;
 
-  const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${STORE.coords.lat},${STORE.coords.lng}`;
+  const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${addressQuery}`;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
@@ -50,6 +51,8 @@ export default function LocalizacaoPage() {
               {STORE.address}
               <br />
               {STORE.city} - {STORE.state}
+              <br />
+              CEP: {STORE.cep}
             </p>
             <a
               href={directionsUrl}

@@ -13,8 +13,8 @@ export async function GET() {
       select: {
         id: true,
         name: true,
-        email: true,
         phone: true,
+        email: true,
         createdAt: true,
         addresses: {
           orderBy: { isDefault: 'desc' },
@@ -23,12 +23,12 @@ export async function GET() {
     });
 
     if (!customer) {
-      return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 });
+      return NextResponse.json({ error: 'Cliente nao encontrado' }, { status: 404 });
     }
 
     return NextResponse.json(customer);
   } catch {
-    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+    return NextResponse.json({ error: 'Nao autenticado' }, { status: 401 });
   }
 }
 
@@ -36,16 +36,16 @@ export async function GET() {
 export async function PUT(req: NextRequest) {
   try {
     const payload = await requireCustomer();
-    const { name, phone, currentPassword, newPassword } = await req.json();
+    const { name, email, currentPassword, newPassword } = await req.json();
 
     const updateData: Record<string, unknown> = {};
 
     if (name) updateData.name = name.trim();
-    if (phone !== undefined) updateData.phone = phone?.trim() || null;
+    if (email !== undefined) updateData.email = email?.trim().toLowerCase() || null;
 
     if (newPassword) {
       if (!currentPassword) {
-        return NextResponse.json({ error: 'Senha atual é obrigatória para alterar a senha' }, { status: 400 });
+        return NextResponse.json({ error: 'Senha atual e obrigatoria para alterar a senha' }, { status: 400 });
       }
       if (newPassword.length < 6) {
         return NextResponse.json({ error: 'Nova senha deve ter pelo menos 6 caracteres' }, { status: 400 });
@@ -56,7 +56,7 @@ export async function PUT(req: NextRequest) {
       });
 
       if (!customer) {
-        return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 });
+        return NextResponse.json({ error: 'Cliente nao encontrado' }, { status: 404 });
       }
 
       const valid = await bcrypt.compare(currentPassword, customer.passwordHash);
@@ -70,11 +70,11 @@ export async function PUT(req: NextRequest) {
     const updated = await prisma.customer.update({
       where: { id: payload.id },
       data: updateData,
-      select: { id: true, name: true, email: true, phone: true },
+      select: { id: true, name: true, phone: true, email: true },
     });
 
     return NextResponse.json(updated);
   } catch {
-    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+    return NextResponse.json({ error: 'Nao autenticado' }, { status: 401 });
   }
 }

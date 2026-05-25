@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { User, Mail, Phone, Lock, Eye, EyeOff, ShoppingBag, MapPin, LogOut, ChevronRight, Pencil, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -9,15 +8,22 @@ import { cn } from '@/lib/utils';
 interface CustomerData {
   id: number;
   name: string;
-  email: string;
-  phone: string | null;
+  phone: string;
+  email: string | null;
   createdAt: string;
 }
 
 type Tab = 'login' | 'register';
 
+// Phone mask: (15) 99999-9999
+function maskPhone(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 2) return `(${digits}`;
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
 export default function ContaPage() {
-  const router = useRouter();
   const [customer, setCustomer] = useState<CustomerData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -28,20 +34,20 @@ export default function ContaPage() {
   const [error, setError] = useState('');
 
   // Login
-  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPhone, setLoginPhone] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
 
   // Register
   const [regName, setRegName] = useState('');
-  const [regEmail, setRegEmail] = useState('');
   const [regPhone, setRegPhone] = useState('');
+  const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regConfirm, setRegConfirm] = useState('');
 
   // Profile edit
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState('');
-  const [editPhone, setEditPhone] = useState('');
+  const [editEmail, setEditEmail] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
 
   useEffect(() => {
@@ -67,7 +73,7 @@ export default function ContaPage() {
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
+        body: JSON.stringify({ phone: loginPhone, password: loginPassword }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error); return; }
@@ -81,7 +87,13 @@ export default function ContaPage() {
     setError('');
 
     if (regPassword !== regConfirm) {
-      setError('As senhas não coincidem');
+      setError('As senhas nao coincidem');
+      return;
+    }
+
+    const phoneDigits = regPhone.replace(/\D/g, '');
+    if (phoneDigits.length < 10) {
+      setError('Telefone invalido. Use DDD + numero');
       return;
     }
 
@@ -90,7 +102,7 @@ export default function ContaPage() {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: regName, email: regEmail, phone: regPhone, password: regPassword }),
+        body: JSON.stringify({ name: regName, phone: regPhone, email: regEmail || undefined, password: regPassword }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error); return; }
@@ -111,11 +123,11 @@ export default function ContaPage() {
       const res = await fetch('/api/auth/me', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: editName, phone: editPhone }),
+        body: JSON.stringify({ name: editName, email: editEmail || null }),
       });
       const data = await res.json();
       if (res.ok) {
-        setCustomer((prev) => prev ? { ...prev, name: data.name, phone: data.phone } : prev);
+        setCustomer((prev) => prev ? { ...prev, name: data.name, email: data.email } : prev);
         setEditing(false);
       }
     } catch { /* ignore */ }
@@ -132,6 +144,8 @@ export default function ContaPage() {
 
   // ---- LOGGED IN: Profile view ----
   if (customer) {
+    const formattedPhone = customer.phone ? maskPhone(customer.phone) : '';
+
     return (
       <div className="mx-auto max-w-2xl px-4 py-8">
         <div className="mb-8">
@@ -156,7 +170,9 @@ export default function ContaPage() {
                 ) : (
                   <h2 className="font-semibold text-[var(--color-text)]">{customer.name}</h2>
                 )}
-                <p className="text-xs text-[var(--color-text-muted)]">{customer.email}</p>
+                <p className="text-xs text-[var(--color-text-muted)] flex items-center gap-1 mt-0.5">
+                  <Phone size={11} /> {formattedPhone}
+                </p>
               </div>
             </div>
             {editing ? (
@@ -170,7 +186,7 @@ export default function ContaPage() {
               </div>
             ) : (
               <button
-                onClick={() => { setEditing(true); setEditName(customer.name); setEditPhone(customer.phone || ''); }}
+                onClick={() => { setEditing(true); setEditName(customer.name); setEditEmail(customer.email || ''); }}
                 className="rounded-lg p-1.5 text-[var(--color-text-muted)] hover:bg-white/5 hover:text-[var(--color-primary)]"
               >
                 <Pencil size={16} />
@@ -180,19 +196,19 @@ export default function ContaPage() {
 
           {editing ? (
             <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
-              <Phone size={14} />
+              <Mail size={14} />
               <input
-                value={editPhone}
-                onChange={(e) => setEditPhone(e.target.value)}
-                placeholder="(15) 99999-9999"
+                value={editEmail}
+                onChange={(e) => setEditEmail(e.target.value)}
+                placeholder="Email (opcional)"
                 className="rounded-lg bg-[var(--color-bg)] border border-white/10 px-3 py-1.5 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]/40"
               />
             </div>
           ) : (
-            customer.phone && (
+            customer.email && (
               <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
-                <Phone size={14} />
-                <span>{customer.phone}</span>
+                <Mail size={14} />
+                <span>{customer.email}</span>
               </div>
             )
           )}
@@ -289,15 +305,15 @@ export default function ContaPage() {
       {tab === 'login' ? (
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-[var(--color-text-muted)]">Email</label>
+            <label className="mb-1.5 block text-xs font-medium text-[var(--color-text-muted)]">Telefone</label>
             <div className="relative">
-              <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
+              <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
               <input
-                type="email"
+                type="tel"
                 required
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
-                placeholder="seu@email.com"
+                value={loginPhone}
+                onChange={(e) => setLoginPhone(maskPhone(e.target.value))}
+                placeholder="(15) 99999-9999"
                 className={cn(
                   'w-full rounded-xl py-3 pl-10 pr-4 text-sm',
                   'bg-[var(--color-surface)] border border-white/5 text-[var(--color-text)]',
@@ -367,15 +383,15 @@ export default function ContaPage() {
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-[var(--color-text-muted)]">Email *</label>
+            <label className="mb-1.5 block text-xs font-medium text-[var(--color-text-muted)]">Telefone *</label>
             <div className="relative">
-              <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
+              <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
               <input
-                type="email"
+                type="tel"
                 required
-                value={regEmail}
-                onChange={(e) => setRegEmail(e.target.value)}
-                placeholder="seu@email.com"
+                value={regPhone}
+                onChange={(e) => setRegPhone(maskPhone(e.target.value))}
+                placeholder="(15) 99999-9999"
                 className={cn(
                   'w-full rounded-xl py-3 pl-10 pr-4 text-sm',
                   'bg-[var(--color-surface)] border border-white/5 text-[var(--color-text)]',
@@ -387,14 +403,14 @@ export default function ContaPage() {
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-[var(--color-text-muted)]">Telefone</label>
+            <label className="mb-1.5 block text-xs font-medium text-[var(--color-text-muted)]">Email (opcional)</label>
             <div className="relative">
-              <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
+              <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
               <input
-                type="tel"
-                value={regPhone}
-                onChange={(e) => setRegPhone(e.target.value)}
-                placeholder="(15) 99999-9999"
+                type="email"
+                value={regEmail}
+                onChange={(e) => setRegEmail(e.target.value)}
+                placeholder="seu@email.com"
                 className={cn(
                   'w-full rounded-xl py-3 pl-10 pr-4 text-sm',
                   'bg-[var(--color-surface)] border border-white/5 text-[var(--color-text)]',

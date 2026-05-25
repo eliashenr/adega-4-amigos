@@ -8,32 +8,39 @@ import {
   clearCustomerCookie,
 } from '@/lib/customer-auth';
 
-// POST /api/auth — Customer login
+// Normalize phone: keep only digits
+function normalizePhone(phone: string): string {
+  return phone.replace(/\D/g, '');
+}
+
+// POST /api/auth — Customer login by phone
 export async function POST(req: NextRequest) {
   try {
-    const { email, password } = await req.json();
+    const { phone, password } = await req.json();
 
-    if (!email || !password) {
-      return NextResponse.json({ error: 'Email e senha obrigatórios' }, { status: 400 });
+    if (!phone || !password) {
+      return NextResponse.json({ error: 'Telefone e senha obrigatorios' }, { status: 400 });
     }
 
+    const phoneClean = normalizePhone(phone);
+
     const customer = await prisma.customer.findUnique({
-      where: { email: email.toLowerCase().trim() },
+      where: { phone: phoneClean },
     });
 
     if (!customer) {
-      return NextResponse.json({ error: 'Email ou senha incorretos' }, { status: 401 });
+      return NextResponse.json({ error: 'Telefone ou senha incorretos' }, { status: 401 });
     }
 
     const valid = await bcrypt.compare(password, customer.passwordHash);
     if (!valid) {
-      return NextResponse.json({ error: 'Email ou senha incorretos' }, { status: 401 });
+      return NextResponse.json({ error: 'Telefone ou senha incorretos' }, { status: 401 });
     }
 
     const token = await signCustomerToken({
       id: customer.id,
       name: customer.name,
-      email: customer.email,
+      phone: customer.phone,
     });
 
     await setCustomerCookie(token);
@@ -41,8 +48,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       id: customer.id,
       name: customer.name,
-      email: customer.email,
       phone: customer.phone,
+      email: customer.email,
     });
   } catch (error) {
     console.error('Customer login error:', error);
@@ -60,7 +67,7 @@ export async function GET() {
 
     const customer = await prisma.customer.findUnique({
       where: { id: payload.id },
-      select: { id: true, name: true, email: true, phone: true },
+      select: { id: true, name: true, phone: true, email: true },
     });
 
     if (!customer) {
