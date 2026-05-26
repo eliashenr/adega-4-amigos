@@ -2,9 +2,13 @@ import { cookies } from 'next/headers';
 import { SignJWT, jwtVerify } from 'jose';
 import { prisma } from '@/lib/prisma';
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.ADMIN_JWT_SECRET || process.env.NEXTAUTH_SECRET || 'fallback-secret-change-me'
-);
+const secretRaw = process.env.ADMIN_JWT_SECRET || process.env.NEXTAUTH_SECRET;
+if (!secretRaw) {
+  throw new Error(
+    '[FATAL] Missing ADMIN_JWT_SECRET or NEXTAUTH_SECRET env var. Server cannot start without a secure JWT secret.'
+  );
+}
+const JWT_SECRET = new TextEncoder().encode(secretRaw);
 
 const COOKIE_NAME = 'admin-token';
 

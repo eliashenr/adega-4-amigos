@@ -30,10 +30,11 @@ export async function GET() {
         createdAt: c.createdAt.toISOString(),
       }))
     );
-  } catch (error: any) {
-    if (error.message === 'Unauthorized') {
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Nao autorizado' }, { status: 401 });
     }
+    console.error('Admin categorias error:', error);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
   }
 }
@@ -71,8 +72,8 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(category, { status: 201 });
-  } catch (error: any) {
-    if (error.message === 'Unauthorized') {
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Nao autorizado' }, { status: 401 });
     }
     console.error('Create category error:', error);

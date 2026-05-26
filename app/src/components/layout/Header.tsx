@@ -2,37 +2,60 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Search, ShoppingCart, User, Menu, X } from 'lucide-react';
+import { Search, ShoppingCart, User, Menu, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCartStore } from '@/stores/cart';
-import { cn } from '@/lib/utils';
+import { cn, formatBRL } from '@/lib/utils';
 import { MobileMenu } from './MobileMenu';
 import { CartDrawer } from '@/components/features/cart/CartDrawer';
 
-const SEARCH_PRODUCTS = [
-  { id: 1, name: 'Heineken 330ml', emoji: '🍺', slug: 'cervejas' },
-  { id: 2, name: 'Brahma 350ml', emoji: '🍺', slug: 'cervejas' },
-  { id: 3, name: 'Coca-Cola 2L', emoji: '🥤', slug: 'refrigerantes' },
-  { id: 4, name: 'Tanqueray 750ml', emoji: '🍸', slug: 'gin' },
-  { id: 5, name: 'Jack Daniels 1L', emoji: '🥃', slug: 'whisky' },
-  { id: 6, name: 'Smirnoff 998ml', emoji: '🍹', slug: 'vodka' },
-  { id: 7, name: 'Amendoim Japonês', emoji: '🥜', slug: 'petiscos' },
-];
+interface SearchResult {
+  id: number;
+  name: string;
+  emoji: string | null;
+  slug: string;
+  price: number;
+  categorySlug: string;
+}
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const itemCount = useCartStore((s) => s.getItemCount());
 
-  const filteredProducts = searchQuery.trim().length >= 2
-    ? SEARCH_PRODUCTS.filter((p) =>
-        p.name.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : [];
+  // Debounced search via API
+  const doSearch = useCallback(async (query: string) => {
+    if (query.trim().length < 2) {
+      setSearchResults([]);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    try {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSearchResults(data);
+      }
+    } catch {
+      // silently fail
+    }
+    setSearching(false);
+  }, []);
+
+  function handleSearchChange(value: string) {
+    setSearchQuery(value);
+    setSearchOpen(true);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => doSearch(value), 300);
+  }
 
   const handleClickOutside = useCallback((e: MouseEvent) => {
     if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
@@ -86,10 +109,7 @@ export function Header() {
                 type="text"
                 placeholder="Buscar produtos..."
                 value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setSearchOpen(true);
-                }}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 onFocus={() => setSearchOpen(true)}
                 className={cn(
                   'w-full rounded-full py-2 pl-10 pr-4 text-sm',
@@ -103,7 +123,7 @@ export function Header() {
             </div>
 
             <AnimatePresence>
-              {searchOpen && filteredProducts.length > 0 && (
+              {searchOpen && (searchResults.length > 0 || searching) && (
                 <motion.div
                   initial={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -114,22 +134,35 @@ export function Header() {
                     'bg-[var(--color-surface)] border border-white/10 shadow-xl'
                   )}
                 >
-                  {filteredProducts.map((product) => (
-                    <Link
-                      key={product.id}
-                      href={`/cardapio?categoria=${product.slug}`}
-                      onClick={() => {
-                        setSearchOpen(false);
-                        setSearchQuery('');
-                      }}
-                      className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors"
-                    >
-                      <span className="text-lg">{product.emoji}</span>
-                      <span className="text-sm text-[var(--color-text)]">
-                        {product.name}
-                      </span>
-                    </Link>
-                  ))}
+                  {searching ? (
+                    <div className="flex items-center justify-center gap-2 px-4 py-4 text-sm text-[var(--color-text-muted)]">
+                      <Loader2 size={16} className="animate-spin" />
+                      Buscando...
+                    </div>
+                  ) : (
+                    searchResults.map((product) => (
+                      <Link
+                        key={product.id}
+                        href={`/cardapio?categoria=${product.categorySlug}`}
+                        onClick={() => {
+                          setSearchOpen(false);
+                          setSearchQuery('');
+                          setSearchResults([]);
+                        }}
+                        className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors"
+                      >
+                        <span className="text-lg">{product.emoji ?? '📦'}</span>
+                        <div className="flex flex-col">
+                          <span className="text-sm text-[var(--color-text)]">
+                            {product.name}
+                          </span>
+                          <span className="text-xs text-[var(--color-primary)]">
+                            {formatBRL(product.price)}
+                          </span>
+                        </div>
+                      </Link>
+                    ))
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>

@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     const categoryId = searchParams.get('categoryId');
     const active = searchParams.get('active');
 
-    const where: any = {};
+    const where: Record<string, unknown> = {};
 
     if (search) {
       where.OR = [
@@ -67,8 +67,8 @@ export async function GET(req: NextRequest) {
         updatedAt: p.updatedAt.toISOString(),
       }))
     );
-  } catch (error: any) {
-    if (error.message === 'Unauthorized') {
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Nao autorizado' }, { status: 401 });
     }
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
@@ -119,8 +119,8 @@ export async function POST(req: NextRequest) {
       price: Number(product.price),
       originalPrice: product.originalPrice ? Number(product.originalPrice) : null,
     }, { status: 201 });
-  } catch (error: any) {
-    if (error.message === 'Unauthorized') {
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Nao autorizado' }, { status: 401 });
     }
     console.error('Create product error:', error);

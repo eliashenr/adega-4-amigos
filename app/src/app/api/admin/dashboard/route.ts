@@ -88,8 +88,8 @@ export async function GET() {
         pendingOrders,
       },
     });
-  } catch (error: any) {
-    if (error.message === 'Unauthorized') {
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Nao autorizado' }, { status: 401 });
     }
     console.error('Dashboard error:', error);

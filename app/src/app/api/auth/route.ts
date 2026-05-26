@@ -7,6 +7,8 @@ import {
   setCustomerCookie,
   clearCustomerCookie,
 } from '@/lib/customer-auth';
+import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
+import { loginSchema, validateBody } from '@/lib/validations';
 
 // Normalize phone: keep only digits
 function normalizePhone(phone: string): string {
@@ -16,12 +18,24 @@ function normalizePhone(phone: string): string {
 // POST /api/auth — Customer login by phone
 export async function POST(req: NextRequest) {
   try {
-    const { phone, password } = await req.json();
-
-    if (!phone || !password) {
-      return NextResponse.json({ error: 'Telefone e senha obrigatorios' }, { status: 400 });
+    // Rate limit: 5 attempts per 15 minutes per IP
+    const ip = getClientIP(req);
+    const rl = checkRateLimit(`auth:customer:${ip}`, { maxRequests: 5, windowSeconds: 900 });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: 'Muitas tentativas. Tente novamente em alguns minutos.' },
+        { status: 429, headers: { 'Retry-After': String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+      );
     }
 
+    const body = await req.json();
+
+    const validation = validateBody(body, loginSchema);
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
+    }
+
+    const { phone, password } = validation.data;
     const phoneClean = normalizePhone(phone);
 
     const customer = await prisma.customer.findUnique({

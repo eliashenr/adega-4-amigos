@@ -32,8 +32,8 @@ export async function GET() {
         createdAt: p.createdAt.toISOString(),
       }))
     );
-  } catch (error: any) {
-    if (error.message === 'Unauthorized') {
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Nao autorizado' }, { status: 401 });
     }
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
@@ -67,8 +67,8 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(promotion, { status: 201 });
-  } catch (error: any) {
-    if (error.message === 'Unauthorized') {
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Nao autorizado' }, { status: 401 });
     }
     console.error('Create promo error:', error);

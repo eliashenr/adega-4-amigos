@@ -2,10 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { signAdminToken, setAdminCookie, clearAdminCookie, getAdminFromCookie } from '@/lib/admin-auth';
+import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
 
 // POST /api/admin/auth — Login
 export async function POST(req: NextRequest) {
   try {
+    // Rate limit: 5 attempts per 15 minutes per IP
+    const ip = getClientIP(req);
+    const rl = checkRateLimit(`auth:admin:${ip}`, { maxRequests: 5, windowSeconds: 900 });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: 'Muitas tentativas. Tente novamente em alguns minutos.' },
+        { status: 429, headers: { 'Retry-After': String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+      );
+    }
+
     const { email, password } = await req.json();
 
     if (!email || !password) {

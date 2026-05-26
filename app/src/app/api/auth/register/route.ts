@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { signCustomerToken, setCustomerCookie } from '@/lib/customer-auth';
+import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
+import { registerSchema, validateBody } from '@/lib/validations';
 
 function normalizePhone(phone: string): string {
   return phone.replace(/\D/g, '');
@@ -10,15 +12,25 @@ function normalizePhone(phone: string): string {
 // POST /api/auth/register — Customer registration
 export async function POST(req: NextRequest) {
   try {
-    const { name, phone, email, password } = await req.json();
-
-    if (!name || !phone || !password) {
-      return NextResponse.json({ error: 'Nome, telefone e senha sao obrigatorios' }, { status: 400 });
+    // Rate limit: 3 registrations per 15 minutes per IP
+    const ip = getClientIP(req);
+    const rl = checkRateLimit(`auth:register:${ip}`, { maxRequests: 3, windowSeconds: 900 });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: 'Muitas tentativas de cadastro. Tente novamente em alguns minutos.' },
+        { status: 429, headers: { 'Retry-After': String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+      );
     }
 
-    if (password.length < 6) {
-      return NextResponse.json({ error: 'Senha deve ter pelo menos 6 caracteres' }, { status: 400 });
+    const body = await req.json();
+
+    // Validate with Zod
+    const validation = validateBody(body, registerSchema);
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
     }
+
+    const { name, phone, email, password } = validation.data;
 
     const phoneClean = normalizePhone(phone);
 

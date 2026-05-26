@@ -28,8 +28,8 @@ export async function PUT(
     });
 
     return NextResponse.json(promotion);
-  } catch (error: any) {
-    if (error.message === 'Unauthorized') {
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Nao autorizado' }, { status: 401 });
     }
     return NextResponse.json({ error: 'Erro ao atualizar promocao' }, { status: 500 });
@@ -47,8 +47,8 @@ export async function DELETE(
 
     await prisma.promotion.delete({ where: { id: parseInt(id) } });
     return NextResponse.json({ message: 'Promocao excluida' });
-  } catch (error: any) {
-    if (error.message === 'Unauthorized') {
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Nao autorizado' }, { status: 401 });
     }
     return NextResponse.json({ error: 'Erro ao excluir promocao' }, { status: 500 });

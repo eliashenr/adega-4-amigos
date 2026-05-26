@@ -27,8 +27,8 @@ export async function PUT(
     });
 
     return NextResponse.json(category);
-  } catch (error: any) {
-    if (error.message === 'Unauthorized') {
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Nao autorizado' }, { status: 401 });
     }
     return NextResponse.json({ error: 'Erro ao atualizar categoria' }, { status: 500 });
@@ -57,8 +57,8 @@ export async function DELETE(
 
     await prisma.category.delete({ where: { id: parseInt(id) } });
     return NextResponse.json({ message: 'Categoria excluida' });
-  } catch (error: any) {
-    if (error.message === 'Unauthorized') {
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Nao autorizado' }, { status: 401 });
     }
     return NextResponse.json({ error: 'Erro ao excluir categoria' }, { status: 500 });

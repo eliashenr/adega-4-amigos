@@ -29,8 +29,8 @@ export async function PATCH(
       status: order.status,
       total: Number(order.total),
     });
-  } catch (error: any) {
-    if (error.message === 'Unauthorized') {
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Nao autorizado' }, { status: 401 });
     }
     return NextResponse.json({ error: 'Erro ao atualizar pedido' }, { status: 500 });

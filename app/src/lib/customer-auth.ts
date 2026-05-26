@@ -1,9 +1,13 @@
 import { cookies } from 'next/headers';
 import { SignJWT, jwtVerify } from 'jose';
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.CUSTOMER_JWT_SECRET || process.env.NEXTAUTH_SECRET || 'fallback-customer-secret'
-);
+const secretRaw = process.env.CUSTOMER_JWT_SECRET || process.env.NEXTAUTH_SECRET;
+if (!secretRaw) {
+  throw new Error(
+    '[FATAL] Missing CUSTOMER_JWT_SECRET or NEXTAUTH_SECRET env var. Server cannot start without a secure JWT secret.'
+  );
+}
+const JWT_SECRET = new TextEncoder().encode(secretRaw);
 
 const COOKIE_NAME = 'customer-token';
 

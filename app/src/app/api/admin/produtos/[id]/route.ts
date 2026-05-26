@@ -35,8 +35,8 @@ export async function PUT(
       price: Number(product.price),
       originalPrice: product.originalPrice ? Number(product.originalPrice) : null,
     });
-  } catch (error: any) {
-    if (error.message === 'Unauthorized') {
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Nao autorizado' }, { status: 401 });
     }
     console.error('Update product error:', error);
@@ -70,8 +70,8 @@ export async function DELETE(
     // Hard delete
     await prisma.product.delete({ where: { id: parseInt(id) } });
     return NextResponse.json({ message: 'Produto excluido' });
-  } catch (error: any) {
-    if (error.message === 'Unauthorized') {
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Nao autorizado' }, { status: 401 });
     }
     console.error('Delete product error:', error);

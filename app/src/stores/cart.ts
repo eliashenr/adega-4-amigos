@@ -4,8 +4,11 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { CartItem } from '@/types';
 
+const CART_EXPIRY_MS = 48 * 60 * 60 * 1000; // 48 hours
+
 interface CartState {
   items: CartItem[];
+  lastUpdated: number;
   addItem: (product: Omit<CartItem, 'quantity'>, quantity?: number) => void;
   removeItem: (productId: number) => void;
   updateQuantity: (productId: number, quantity: number) => void;
@@ -18,6 +21,7 @@ export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
+      lastUpdated: Date.now(),
 
       addItem: (product, quantity = 1) => {
         set((state) => {
@@ -27,6 +31,7 @@ export const useCartStore = create<CartState>()(
 
           if (existing) {
             return {
+              lastUpdated: Date.now(),
               items: state.items.map((item) =>
                 item.productId === product.productId
                   ? { ...item, quantity: item.quantity + quantity }
@@ -36,6 +41,7 @@ export const useCartStore = create<CartState>()(
           }
 
           return {
+            lastUpdated: Date.now(),
             items: [...state.items, { ...product, quantity }],
           };
         });
@@ -77,6 +83,15 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: 'adega4amigos-cart',
+      onRehydrateStorage: () => (state) => {
+        // Clear cart if expired (48h)
+        if (state && state.lastUpdated) {
+          const elapsed = Date.now() - state.lastUpdated;
+          if (elapsed > CART_EXPIRY_MS) {
+            state.clearCart();
+          }
+        }
+      },
     }
   )
 );

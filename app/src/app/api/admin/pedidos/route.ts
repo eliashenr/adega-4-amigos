@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
 
-    const where: any = {};
+    const where: Record<string, unknown> = {};
     if (status) where.status = status;
 
     const orders = await prisma.order.findMany({
@@ -60,10 +60,11 @@ export async function GET(req: NextRequest) {
         createdAt: o.createdAt.toISOString(),
       }))
     );
-  } catch (error: any) {
-    if (error.message === 'Unauthorized') {
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Nao autorizado' }, { status: 401 });
     }
+    console.error('Admin pedidos error:', error);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
   }
 }
